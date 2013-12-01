@@ -89,6 +89,7 @@ int openMP(matrix* A, matrix* B, matrix* result)
     return 1;
 }
 
+
 typedef struct thread_args //stores the arguments which will be given to each thread
 {
     matrix* First;
@@ -114,6 +115,7 @@ void* scalarProduct(thread_args* arguments)
     {
         res += arguments->First->values[(arguments->row * arguments->First->columns) + i] * arguments->Second->values[i * arguments->Second->columns + arguments->column];
     }
+    // printf("Element: %i %i, %lf\n", arguments->column, arguments->row,res);
     arguments->Res->values[(arguments->row * arguments->Res->columns) + arguments->column] = res;
 }
 
@@ -121,24 +123,29 @@ int multithreaded(matrix* A, matrix* B, matrix* result)
 {
    if (!matchDimensions(A, B, result)) return 0;
 
-    thread_args arguments;
-    arguments.First = A;
-    arguments.Second = B;
-    arguments.Res = result;
-
     pthread_t* identifiers = malloc(sizeof(pthread_t) * result->rows * result->columns);
+
+    thread_args* arguments = malloc(sizeof(thread_args) * result->rows * result->columns);
+
     for (int i = 0; i < result->rows; ++i)
     {
-        arguments.row = i;
         for (int j = 0; j < result->columns; ++j)
         {
-            arguments.column = j;
-            pthread_create(&identifiers[(i*(result->columns)) + j], NULL, scalarProduct, &arguments);
+            int run = i * result->columns + j;
+            // arguments[run] = {A,B,result,i,j};
+            arguments[run].First = A;
+            arguments[run].Second = B;
+            arguments[run].Res = result;
+            arguments[run].row = i;
+            arguments[run].column = j;
+
+            pthread_create(&identifiers[run], NULL, scalarProduct, &arguments[run]);
           //  printf("Waiting for thread %d", i*result->columns + j);
+            // pthread_join(identifiers[(i*(result->columns)) + j], NULL);
         }
     }
 
-    for (int k = 0; k < result->rows * result->columns; ++k)
+    for (int k = 0; k < result->rows * result->columns; ++k) //waiting for the threads to finish
     {
         pthread_join(identifiers[k], NULL);
     }
