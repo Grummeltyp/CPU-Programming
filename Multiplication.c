@@ -99,7 +99,7 @@ typedef struct thread_args //stores the arguments which will be given to each th
 } thread_args;
 
 /**
-* Returns the scalar product of a row and a column of to matrices
+* Computation of Scalar Product for Pthread Implementation
 *
 * @param *A handle to the first matrix
 * @param *B handle to the second matrix
@@ -135,10 +135,13 @@ int multithreaded(matrix* A, matrix* B, matrix* result)
             arguments.column = j;
             pthread_create(&identifiers[(i*(result->columns)) + j], NULL, scalarProduct, &arguments);
           //  printf("Waiting for thread %d", i*result->columns + j);
-            pthread_join(identifiers[(i*(result->columns)) + j], NULL);
         }
     }
 
+    for (int k = 0; k < result->rows * result->columns; ++k)
+    {
+        pthread_join(identifiers[k], NULL);
+    }
 
     free(identifiers);
 
