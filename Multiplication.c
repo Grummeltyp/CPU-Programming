@@ -7,9 +7,11 @@
 //
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
 #include <omp.h>
+#include <pthread.h>
 
 
 #include "In_Out.h"
@@ -45,23 +47,6 @@ int compareMatrices(matrix* A, matrix* B)
 }
 
 
-/*
- * returns the difference between two timespec structs, allowing for performance measurements of a function
- * Code taken from: http://www.guyrutenberg.com/2007/09/22/profiling-code-using-clock_gettime/
- */
-struct timespec diff(struct timespec start, struct timespec end)
-{
-	struct timespec temp;
-	if ((end.tv_nsec-start.tv_nsec)<0) {
-		temp.tv_sec = end.tv_sec-start.tv_sec-1;
-		temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
-	} else {
-		temp.tv_sec = end.tv_sec-start.tv_sec;
-		temp.tv_nsec = end.tv_nsec-start.tv_nsec;
-	}
-	return temp;
-}
-
 int sequential(matrix* A, matrix* B, matrix* result)
 {
     if (!matchDimensions(A, B, result)) return 0;
@@ -86,8 +71,8 @@ int openMP(matrix* A, matrix* B, matrix* result)
 
     #pragma omp parallel
     {
-        int num = omp_get_num_threads();
-        printf("%d Threads\n", num);
+      //  int num = omp_get_num_threads();
+       // printf("%d Threads\n", num);
         #pragma omp for
         for (int i = 0; i<A->rows; ++i) {
             
@@ -104,19 +89,102 @@ int openMP(matrix* A, matrix* B, matrix* result)
     return 1;
 }
 
+typedef struct thread_args //stores the arguments which will be given to each thread
+{
+    matrix* First;
+    matrix* Second;
+    matrix* Res;
+    int row;
+    int column;
+} thread_args;
+
+/**
+* Returns the scalar product of a row and a column of to matrices
+*
+* @param *A handle to the first matrix
+* @param *B handle to the second matrix
+* @param row indicates which row of the first matrix will be used 
+* @param column indicates which column of the second matrix will be used 
+* @param[out] *result handle to the result matrix 
+*/
+void* scalarProduct(thread_args* arguments)
+{
+    double res = 0;
+    for (int i = 0; i < arguments->First->columns; ++i)
+    {
+        res += arguments->First->values[(arguments->row * arguments->First->columns) + i] * arguments->Second->values[i * arguments->Second->columns + arguments->column];
+    }
+    arguments->Res->values[(arguments->row * arguments->Res->columns) + arguments->column] = res;
+}
+
+int multithreaded(matrix* A, matrix* B, matrix* result)
+{
+   if (!matchDimensions(A, B, result)) return 0;
+
+    thread_args arguments;
+    arguments.First = A;
+    arguments.Second = B;
+    arguments.Res = result;
+
+    pthread_t* identifiers = malloc(sizeof(pthread_t) * result->rows * result->columns);
+    for (int i = 0; i < result->rows; ++i)
+    {
+        arguments.row = i;
+        for (int j = 0; j < result->columns; ++j)
+        {
+            arguments.column = j;
+            pthread_create(&identifiers[(i*(result->columns)) + j], NULL, scalarProduct, &arguments);
+          //  printf("Waiting for thread %d", i*result->columns + j);
+            pthread_join(identifiers[(i*(result->columns)) + j], NULL);
+        }
+    }
+
+
+    free(identifiers);
+
+    return 1;
+}
+
+
 
 int main(int argc, const char * argv[])
 {
-    struct timespec start, end, difference;
-    matrix M, N, seq, par;
+    struct timeval start, end;
+    matrix M, N, seq, res;
     parseMatrices("matrices.txt", 0, &M, &N);
+    printMatrix(&M,"");
+    printf("\n");
+    printMatrix(&N,"");
+    printf("\n");
    // clock_gettime(CLOCK_REALTIME, &start);
-    sequential(&M, &N, &seq);
+    gettimeofday(&start, NULL);
+    sequential(&M, &N, &res);
+    gettimeofday(&end, NULL);
+    
+    printMatrix(&res, "");
+    printf("Seq-Implementation took %.3lf milliseconds.\n", (end.tv_sec - start.tv_sec + 1E-6 * (end.tv_usec - start.tv_usec)*1000));
+
     //clock_gettime(CLOCK_REALTIME, &end);
     //difference = diff(start, end);
-    openMP(&M, &N, &par);
-    printMatrix(&seq, "");
-    printMatrix(&par, "");
+    gettimeofday(&start, NULL);
+    openMP(&M, &N, &res);
+    gettimeofday(&end, NULL);
+    
+    printMatrix(&res, "");
+    printf("Openmp-Implementation took %.3lf milliseconds.\n", (end.tv_sec - start.tv_sec + 1E-6 * (end.tv_usec - start.tv_usec)*1000));
+
+    gettimeofday(&start, NULL);
+    multithreaded(&M, &N, &res);
+    gettimeofday(&end, NULL);
+
+    printMatrix(&res, "");
+    printf("Pthreads-Implementation took %.3lf milliseconds.\n", (end.tv_sec - start.tv_sec + 1E-6 * (end.tv_usec - start.tv_usec)*1000));
+   
+    free(M.values);
+    free(N.values);
+    free(res.values);
+
+
 
     
     return 0;

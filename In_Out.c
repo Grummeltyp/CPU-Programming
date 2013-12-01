@@ -14,7 +14,7 @@ double* alloc_matrix(int rows, int columns)
 int parseMatricesPart(FILE* input, matrix* M)
 {
 		//scan dimension
-		if(fscanf(input,"(%d x %d)", &(M->rows), &M->columns) != 2)
+		if(fscanf(input,"(%d x %d)", &(M->columns), &M->rows) != 2)
 		{
           //  printf("%d %d", M->rows, M->columns);
             perror("Bad Dimension Format!");
@@ -43,7 +43,9 @@ int parseMatricesPart(FILE* input, matrix* M)
 			}
 			M->values[i] = val;
 		}
-		if ((c = fgetc(input)) != ']' )
+		
+		fscanf(input, "%s", &c);
+		if (c != ']' )
 		{
 			perror("Matrices must end with a ']'!");
 			return 0;
@@ -162,7 +164,7 @@ int printMatrix(matrix* M, char* output)
         }
     }
     
-    printf("(%d x %d)[", M->rows, M->columns);
+    printf("(%d x %d)[", M->columns, M->rows);
    
     for (int i = 0; i<(M->rows * M->columns); ++i)
     {
