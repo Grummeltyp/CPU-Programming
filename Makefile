@@ -7,9 +7,10 @@ SOURCES = Main.c In_Out.c matrix.c
 all: Main
 
 Main: Main.c In_Out.c matrix.o
+	$(CC) $(CFLAGS) -o main Main.c In_Out.c matrix.o $(LDLIBS)
 
-matrix:
-	$(CC) $(CFLAGS) -c matrix.c -o matrix.o
+matrix.o: matrix.h
+#	$(CC) $(CFLAGS) -c matrix.c
 
 clean:
-	$(RM) Main
+	$(RM) Main matrix.o
