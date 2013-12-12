@@ -1,15 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
-
 #include <string.h>
 
 #include "In_Out.h"
 
-double* alloc_matrix(int rows, int columns)
-{
-	return (double*)malloc(sizeof(double)* rows * columns);
-}
 
 int parseMatricesPart(FILE* input, matrix* M)
 {
@@ -43,7 +38,7 @@ int parseMatricesPart(FILE* input, matrix* M)
 			}
 			M->values[i] = val;
 		}
-		
+
 		fscanf(input, "%s", &c);
 		if (c != ']' )
 		{
@@ -80,7 +75,7 @@ int parseMatrices(char* input, int line, matrix* operandA, matrix* operandB)
 
 	//read the first matrix of the line
 	if(parseMatricesPart(in, operandA) != 1) return 0;
-    
+
     //return if second matrix shall not be parsed
     if (operandB == NULL) return 1;
 
@@ -163,14 +158,14 @@ int printMatrix(matrix* M, char* output)
             return 0;
         }
     }
-    
+
     printf("(%d x %d)[", M->columns, M->rows);
-   
+
     for (int i = 0; i<(M->rows * M->columns); ++i)
     {
         printf("%lf ", M->values[i]);
     }
-    
+
     printf("]\n");
     if(redirect) fclose(out);
     return 1;
