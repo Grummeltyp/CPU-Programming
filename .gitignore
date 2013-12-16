@@ -1,1 +1,4 @@
 *.txt
+*.o
+Main
+MPI

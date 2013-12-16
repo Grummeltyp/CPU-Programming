@@ -10,7 +10,7 @@ all: Main MPI
 Main: $(SOURCES) $(HEADERS) matrix.o
 	$(CC) -o $@ Main.c In_Out.c matrix.o $(LDLIBS) $(CFLAGS) -fopenmp
 
-MPI: messagePassing.c messagePassing.h In_Out.c In_Out.h matrix.o
+MPI: messagePassing.c In_Out.c In_Out.h matrix.o
 	mpicc -o $@ messagePassing.c In_Out.c matrix.o $(CFLAGS)
 
 matrix.o: matrix.c matrix.h
