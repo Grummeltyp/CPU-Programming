@@ -15,16 +15,11 @@ MPI_Status stat; // store status of MPI_Recv
 MPI_Request req; //capture request of MPI_Isend
 
 
-int messagePassing(matrix* A, matrix* B, matrix* result, int argc, char *argv[])
+int messagePassing(matrix* A, matrix* B, matrix* result)
 {
-
-  MPI_Init(&argc, &argv);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &num);
 
   if (rank == 0) //master task
   {
-
     if (!matchDimensions(A, B, result)) return 0;
 
     part = A->rows / (num - 1); //how many rows for each worker?
@@ -38,6 +33,7 @@ int messagePassing(matrix* A, matrix* B, matrix* result, int argc, char *argv[])
       if (i == num - 1 && A->rows % (num - 1) != 0) up = A->rows;
       else up = low + part;
 
+      printf("Master Sending...\n");
       //non-blocking sends of boundaries to current worker
       MPI_Isend(&low, 1, MPI_INT, i, 1, MPI_COMM_WORLD, &req);
       MPI_Isend(&up, 1, MPI_INT, i, 2, MPI_COMM_WORLD, &req);
@@ -46,28 +42,25 @@ int messagePassing(matrix* A, matrix* B, matrix* result, int argc, char *argv[])
       MPI_Isend(&(A->values[low * A->columns]), (up - low) * A->columns
         , MPI_DOUBLE, i, 3, MPI_COMM_WORLD, &req);
     }
-    //all workers get the whole of B
-    MPI_Bcast(&(B->values), B->rows * B->columns, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    printf("Master done Sending.\n");
 
-    for (int i = 1; i < num; ++i)
-    {
-      MPI_Recv(&low, 1, MPI_INT, i, 4, MPI_COMM_WORLD, &stat);
-      MPI_Recv(&up, 1, MPI_INT, i, 5, MPI_COMM_WORLD, &stat);
-
-      MPI_Recv(&(result->values[low * result->columns]), (up - low) * B->columns
-        , MPI_DOUBLE, i, 6, MPI_COMM_WORLD, &stat);
-    }
   }
+
+  //all workers get the whole of B
+  MPI_Bcast(&(B->values), B->rows * B->columns, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   if (rank > 0) //worker tasks
   {
     //recieving boundaries
+    printf("Slave recieving...\n");
     MPI_Recv(&low, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, &stat);
     MPI_Recv(&up, 1, MPI_INT, 0, 2, MPI_COMM_WORLD, &stat);
 
     //recieving portion of A
     MPI_Recv(&(A->values[low * A->columns]), (up - low) * A->columns, MPI_DOUBLE
       , 0, 3, MPI_COMM_WORLD, &stat);
+    printf("Slave done recieving.\n");
+
 
     for (int i = low; i < up; ++i)
     {
@@ -80,9 +73,31 @@ int messagePassing(matrix* A, matrix* B, matrix* result, int argc, char *argv[])
         }
       }
     }
+
+    printf("Slave sending...\n");
+    MPI_Isend(&low, 1, MPI_INT, 0, 4, MPI_COMM_WORLD, &req);
+    MPI_Isend(&up, 1, MPI_INT, 0, 5, MPI_COMM_WORLD, &req);
+    MPI_Isend(&(result->values[low * result->columns]), (up - low) * B->columns
+      , MPI_DOUBLE, 0, 6, MPI_COMM_WORLD, &req);
+    printf("Slave done sending.\n");
+
   }
 
-  MPI_Finalize();
+  if (rank == 0)
+  {
+    for (int i = 1; i < num; ++i)
+    {
+      printf("Master recieving...\n");
+      MPI_Recv(&low, 1, MPI_INT, i, 4, MPI_COMM_WORLD, &stat);
+      MPI_Recv(&up, 1, MPI_INT, i, 5, MPI_COMM_WORLD, &stat);
+
+      MPI_Recv(&(result->values[low * result->columns]), (up - low) * B->columns
+        , MPI_DOUBLE, i, 6, MPI_COMM_WORLD, &stat);
+    }
+    printf("Master done recieving.\n");
+
+  }
+
   return 1;
 }
 

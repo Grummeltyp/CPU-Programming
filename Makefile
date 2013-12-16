@@ -1,16 +1,20 @@
 #Mac-Users(OS X 10.7 or above): Uncomment the line below to ensure gcc is used instead of clang
-CC = mpicc
-CFLAGS = -std=c11 -fopenmp
+CC = gcc-4.9
+CFLAGS = -std=c11 -O1
 LDLIBS = -lpthread
-SOURCES = Main.c In_Out.c matrix.c
+SOURCES = Main.c In_Out.c
+HEADERS = In_Out.h posixThreads.h openMP.h
 
-all: Main
+all: Main MPI
 
-Main: Main.c In_Out.c matrix.o
-	$(CC) $(CFLAGS) -o main Main.c In_Out.c matrix.o $(LDLIBS)
+Main: $(SOURCES) $(HEADERS) matrix.o
+	$(CC) -o $@ Main.c In_Out.c matrix.o $(LDLIBS) $(CFLAGS) -fopenmp
 
-matrix.o: matrix.h
-#	$(CC) $(CFLAGS) -c matrix.c
+MPI: messagePassing.c messagePassing.h In_Out.c In_Out.h matrix.o
+	mpicc -o $@ messagePassing.c In_Out.c matrix.o $(CFLAGS)
+
+matrix.o: matrix.c matrix.h
+	$(CC) -c -o $@ $< $(CFLAGS)
 
 clean:
-	$(RM) Main matrix.o
+	$(RM) *.o performance.txt results.txt Main MPI

@@ -1,10 +1,28 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <string.h>
-
 #include "In_Out.h"
 
+/**
+ * Returns the time passed between start and end
+ */
+
+double getDifference(struct timeval start, struct timeval end)
+{
+  return (end.tv_sec - start.tv_sec) + 1E-6 * (end.tv_usec - start.tv_usec);
+}
+
+/*
+ *compares two matrices A and B. Returns 1 if they are equal, returns 0 otherwise
+ */
+
+int compareMatrices(matrix* A, matrix* B)
+{
+    if (A->rows != B->rows || A->columns != B->columns) return 0;
+
+    for (int i = 0; i<(A->rows)*(A->columns); ++i)
+    {
+        if (fabs(A->values[i] - B->values[i]) >= EPSILON) return 0;
+    }
+    return 1;
+}
 
 int parseMatricesPart(FILE* input, matrix* M)
 {
@@ -62,101 +80,74 @@ int parseMatrices(char* input, int line, matrix* operandA, matrix* operandB)
 	char c = 0;
 	for (int i = 0; i < line; ++i)
 	{
+    c = 0;
 		while (c!='\n')
-		{
-			c = fgetc(in);
-			if (c == EOF)
-			{
-				perror("Input file doesnt contain so much lines!");
-				return 0;
-			}
-		}
+    {
+      c = fgetc(in);
+    }
+
 	}
 
 	//read the first matrix of the line
-	if(parseMatricesPart(in, operandA) != 1) return 0;
-
+	if(parseMatricesPart(in, operandA) != 1)
+  {
+    fclose(in);
+    return 0;
+  }
     //return if second matrix shall not be parsed
-    if (operandB == NULL) return 1;
-
+    if (operandB == NULL)
+    {
+      fclose(in);
+      return 1;
+    }
 	fscanf(in, "%*[ \t]%c", &c);
 	if (c == '\n' || c == EOF) //no second matrix in line
 	{
 		perror("Missing second Matrix!");
-        return 0;
+    fclose(in);
+    return 0;
 	}
 
 	//opening bracket means there is a second matrix in this line
 	if (c == '(')
 	{
         fseek(in,-1,SEEK_CUR);
-		if(parseMatricesPart(in, operandB) != 1) return 0;
-		return 1;
+		if(parseMatricesPart(in, operandB) != 1)
+    {
+      fclose(in);
+      return 0;
+		}
+    fclose(in);
+    return 1;
 	}
 
 	//if c is neither newline or opening bracket, theres a character that doesnt belong there
 	perror("Bad Format!");
 	return 0;
 
-
-/*	//here begins the actual parsing
-	matrix current;
-
-	//scan dimension
-	if(fscanf(in,"(%d x %d)", current.rows, current.columns) != 1)
-	{
-		perror("Bad Dimension Format!");
-		return 0;
-	}
-	current.values = alloc_matrix(current.rows, current.columns);
-
-
-	//scan Matrix values
-	int c = fgetc(in);
-
-	//todo: ignore every char up to first opening square bracket
-	if (c != '[') //matrices are enclosed by square brackets
-	{
-		perror("Matrices must begin with a '['!.");
-		return 0;
-	}
-
-	//parsing of matrix values
-	double val;
-	for (int i = 0; i < (current->rows)*(current->columns); ++i)
-	{
-		if(fscanf(in,"%lf",&val) != 1)
-		{
-			perror("Bad Matrix Format!");
-			return 0;
-		}
-		current->values[i] = val;
-	}
-	if ((c = fgetc(in)) != ']' )
-	{
-		perror("Matrices must end with a ']'!");
-		return 0;
-	}
-
-	operandA = *current;
-
-
-	return 1; */
 }
 
 int printMatrix(matrix* M, char* output)
 {
-    FILE* out;
     int redirect = 0;
-    if (strcmp(output,"")) //redirecting standard output to output file
+    int newout, stdoutcpy;
+    if (strcmp(output,"") != 0) //redirecting standard output to output file
     {
         redirect = 1;
-        out = freopen(output, "a", stdout);
-        if (out == NULL)
-        {
-            perror("Output File Error!");
+        stdoutcpy = dup(1);
+        close(1);
+        //because stdout(which is 1) was closed, the new file gets it's descriptor
+        if(newout = open(output, O_CREAT|O_APPEND|O_WRONLY, 0777) < 0)
+          {
+            perror("open: ");
             return 0;
-        }
+          }
+        // if (dup2(1, newout) < 0)
+        // {
+        //   perror("Redirecting stdout: ");
+        //   return 0;
+        // }
+        // close(newout);
     }
 
     printf("(%d x %d)[", M->columns, M->rows);
@@ -167,6 +158,16 @@ int printMatrix(matrix* M, char* output)
     }
 
     printf("]\n");
-    if(redirect) fclose(out);
+
+    //reopening standard output
+    if(redirect)
+    {
+      if(dup2(stdoutcpy, 1) < 0)
+      {
+        perror("Restoring stdout: ");
+        return 0;
+      }
+      close(stdoutcpy);
+    }
     return 1;
 }

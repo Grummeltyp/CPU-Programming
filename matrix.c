@@ -2,7 +2,7 @@
 
 double* alloc_matrix(int rows, int columns)
 {
-  return (double*)malloc(sizeof(double)* rows * columns);
+  return (double*)malloc(sizeof(double) * rows * columns);
 }
 
 int matchDimensions(matrix* A, matrix* B, matrix* result)

@@ -1,7 +1,28 @@
 #ifndef IN_OUT_H_
 #define IN_OUT_H_
 
+#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
+#include <math.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
+#define EPSILON 0.000001
+
 #include "matrix.h"
+
+double getDifference(struct timeval start, struct timeval end);
+
+/*
+ *compares two matrices A and B. Returns 1 if they are equal, returns 0 otherwise
+ */
+
+int compareMatrices(matrix* A, matrix* B);
 
 /* parses the specified line of the input file containing the matrices in
  * textform
